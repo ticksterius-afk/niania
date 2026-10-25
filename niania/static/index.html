@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Niania</title>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --line: #262d36; --text: #e6edf3; --muted: #8b949e;
+    --ok: #3fb950; --warn: #d29922; --bad: #f85149; --accent: #7aa2f7; --cry: #f778ba;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; flex: 1; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .dot.bad { background: var(--bad); }
+  #clock { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 12px; }
+  .video { position: relative; padding: 0; overflow: hidden; background: #000; aspect-ratio: 16 / 9; }
+  .video img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .video .offline { position: absolute; inset: 0; display: none; place-items: center; color: var(--muted); }
+  .video.down .offline { display: grid; }
+  .video .chips { position: absolute; left: 8px; top: 8px; display: flex; gap: 6px; }
+  .chip { font-size: 12px; padding: 3px 8px; border-radius: 99px; background: rgba(0,0,0,.55); color: #fff; display: none; }
+  .chip.on { display: inline-block; }
+  .chip.motion { background: rgba(210,153,34,.85); }
+  .chip.cry { background: rgba(247,120,186,.9); }
+  .chip.disarmed { background: rgba(139,148,158,.8); }
+  .video button.fs { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.55); color: #fff;
+    border: 0; border-radius: 8px; padding: 6px 9px; font-size: 13px; }
+
+  #alert { display: none; border-color: var(--cry); background: #2a1424; }
+  #alert.on { display: flex; align-items: center; gap: 10px; }
+  #alert.motion { border-color: var(--warn); background: #2a2210; }
+  #alert b { flex: 1; }
+  #alert button { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; }
+
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .big { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 14px;
+    padding: 14px 10px; font-size: 16px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .big small { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .big.on { border-color: var(--accent); background: #1a2233; }
+  .big.armed { border-color: var(--ok); background: #13261a; }
+
+  .meter { margin: 6px 0 12px; }
+  .meter:last-child { margin-bottom: 2px; }
+  .meter .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .meter .row b { color: var(--text); font-weight: 500; }
+  .bar { position: relative; height: 8px; border-radius: 99px; background: #0b0f14; overflow: hidden; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 99px; background: var(--accent); transition: width .25s; }
+  .bar.cry i { background: var(--cry); }
+  .bar.motion i { background: var(--warn); }
+  .bar em { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #fff; opacity: .7; }
+
+  h2 { font-size: 14px; color: var(--muted); font-weight: 600; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+  #events { list-style: none; margin: 0; padding: 0; }
+  #events li { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+  #events li:first-child { border-top: 0; }
+  #events img { width: 84px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; background: #000; flex: none; }
+  #events .k { font-weight: 600; }
+  #events .k.cry { color: var(--cry); }
+  #events .k.motion { color: var(--warn); }
+  #events .t { color: var(--muted); font-size: 13px; }
+  .empty { color: var(--muted); font-size: 14px; }
+
+  details summary { cursor: pointer; font-weight: 600; list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::after { content: " ▾"; color: var(--muted); }
+  .set { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .set:first-of-type { border-top: 0; }
+  .set label { flex: 1; }
+  .set small { display: block; color: var(--muted); font-size: 12px; }
+  .set input[type=range] { width: 46%; accent-color: var(--accent); }
+  .set output { width: 3.2em; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .set .switch { position: relative; width: 46px; height: 28px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span { position: absolute; inset: 0; background: #30363d; border-radius: 99px; transition: .2s; }
+  .switch span::before { content: ""; position: absolute; width: 22px; height: 22px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + span { background: var(--ok); }
+  .switch input:checked + span::before { transform: translateX(18px); }
+  select.dev { width: 55%; background: #0b0f14; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; font-size: 14px; }
+  .btn { background: #21262d; color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+  code { background: #0b0f14; padding: 2px 6px; border-radius: 6px; word-break: break-all; }
+  .help { color: var(--muted); font-size: 13px; }
+  .help ol { padding-left: 18px; margin: 6px 0; }
+  #volrow { display: none; }
+  #volrow.on { display: flex; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="dot" id="dot"></span>
+    <h1 id="title">Niania</h1>
+    <span id="clock"></span>
+  </header>
+
+  <div class="card video" id="video">
+    <img id="cam" alt="Podgląd z kamerki">
+    <div class="offline">Brak obrazu z kamerki…</div>
+    <div class="chips">
+      <span class="chip disarmed" id="chipDisarmed">czuwanie wył.</span>
+      <span class="chip motion" id="chipMotion">ruch</span>
+      <span class="chip cry" id="chipCry">płacz</span>
+    </div>
+    <button class="fs" id="fs" aria-label="Pełny ekran">⛶</button>
+  </div>
+
+  <div class="card" id="alert"><b id="alertText"></b><button id="alertOk">OK</button></div>
+
+  <div class="controls">
+    <button class="big" id="listen">🔊 Słuchaj<small id="listenSub">dźwięk na żywo</small></button>
+    <button class="big" id="arm">🛡️ Czuwanie<small id="armSub">…</small></button>
+  </div>
+
+  <div class="card" id="volrow" style="align-items:center;gap:12px">
+    <span>Głośność</span>
+    <input type="range" id="vol" min="0.5" max="6" step="0.1" value="2" style="flex:1;accent-color:var(--accent)">
+  </div>
+
+  <div class="card">
+    <div class="meter">
+      <div class="row"><span>Płacz</span><b id="cryVal">–</b></div>
+      <div class="bar cry"><i id="cryBar"></i><em id="cryThr"></em></div>
+    </div>
+    <div class="meter">
+      <div class="row"><span>Ruch</span><b id="motionVal">–</b></div>
+      <div class="bar motion"><i id="motionBar"></i><em id="motionThr"></em></div>
+    </div>
+    <div class="meter">
+      <div class="row"><span>Dźwięk</span><b id="levelVal">–</b></div>
+      <div class="bar"><i id="levelBar"></i></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Zdarzenia</h2>
+    <ul id="events"></ul>
+  </div>
+
+  <div class="card">
+    <details id="settings">
+      <summary>Ustawienia</summary>
+      <div class="set"><label>Kamerka<small id="camNow"></small></label><select class="dev" data-dev="camera"></select></div>
+      <div class="set"><label>Mikrofon<small id="micNow"></small></label><select class="dev" data-dev="mic"></select></div>
+      <div class="set"><label><small>Podłączone przed chwilą urządzenie nie widać? Odśwież listę.</small></label><button class="btn" id="rescan">Odśwież</button></div>
+      <div class="set"><label>Alarm przy płaczu</label><label class="switch"><input type="checkbox" data-key="cry_enabled"><span></span></label></div>
+      <div class="set"><label>Próg płaczu<small>niżej = czulej</small></label><input type="range" data-key="cry_threshold" min="0.1" max="0.9" step="0.05"><output></output></div>
+      <div class="set"><label>Płacz przez co najmniej<small>sekundy</small></label><input type="range" data-key="cry_min_seconds" min="1" max="10" step="1"><output></output></div>
+      <div class="set"><label>Alarm przy ruchu</label><label class="switch"><input type="checkbox" data-key="motion_enabled"><span></span></label></div>
+      <div class="set"><label>Czułość ruchu<small>wyżej = czulej</small></label><input type="range" data-key="motion_sensitivity" min="0" max="100" step="5"><output></output></div>
+      <div class="set"><label>Ruch przez co najmniej<small>sekundy</small></label><input type="range" data-key="motion_min_seconds" min="1" max="10" step="1"><output></output></div>
+      <div class="set"><label>Powiadomienia na telefon (ntfy)</label><label class="switch"><input type="checkbox" data-key="ntfy_enabled"><span></span></label></div>
+      <div class="set"><label>Sprawdź powiadomienie</label><button class="btn" id="test">Wyślij test</button></div>
+      <div class="help">
+        Jak dostawać alarmy przy zgaszonym ekranie:
+        <ol>
+          <li>Zainstaluj aplikację <b>ntfy</b> (App Store / Google Play).</li>
+          <li>Dodaj subskrypcję, serwer <code id="ntfyServer"></code>, temat <code id="ntfyTopic"></code>.</li>
+          <li>Kliknij „Wyślij test”.</li>
+        </ol>
+        Temat działa jak hasło, więc nikomu go nie podawaj. Do internetu trafia tylko tekst alarmu, a obraz i dźwięk zostają w domu.
+      </div>
+    </details>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const LABELS = { "Speech": "mowa", "Silence": "cisza", "Baby cry, infant cry": "płacz niemowlęcia",
+  "Crying, sobbing": "płacz", "Music": "muzyka", "Television": "telewizor", "Inside, small room": "cisza w pokoju",
+  "Baby laughter": "śmiech dziecka", "Babbling": "gaworzenie", "Child speech, kid speaking": "mowa dziecka",
+  "Dog": "pies", "Snoring": "chrapanie", "Breathing": "oddech", "White noise": "szum", "Noise": "szum" };
+let settings = {}, lastEventId = null, babyName = "Aron";
+
+// ---------- obraz ----------
+const cam = $("cam");
+function startStream() { cam.src = "/stream.mjpg?t=" + Date.now(); }
+cam.onerror = () => setTimeout(startStream, 2000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { startStream(); poll(); loadEvents(); } });
+startStream();
+$("fs").onclick = () => {
+  const el = $("video");
+  if (el.requestFullscreen) el.requestFullscreen().catch(() => window.open("/stream.mjpg", "_blank"));
+  else window.open("/stream.mjpg", "_blank");   // iPhone: brak fullscreen dla div
+};
+
+// ---------- dźwięk na żywo ----------
+let ctx = null, gain = null, ws = null, nextTime = 0;
+function ensureCtx() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    gain = ctx.createGain(); gain.gain.value = +$("vol").value; gain.connect(ctx.destination);
+  }
+  if (ctx.state === "suspended") ctx.resume();
+}
+function startListening() {
+  ensureCtx();
+  ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws/audio");
+  ws.binaryType = "arraybuffer";
+  ws.onmessage = (m) => {
+    const pcm = new Int16Array(m.data), buf = ctx.createBuffer(1, pcm.length, 16000), ch = buf.getChannelData(0);
+    for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
+    const src = ctx.createBufferSource(); src.buffer = buf; src.connect(gain);
+    const now = ctx.currentTime;
+    if (nextTime < now + 0.05 || nextTime > now + 0.8) nextTime = now + 0.15;   // opóźnienie ~150 ms
+    src.start(nextTime); nextTime += buf.duration;
+  };
+  ws.onclose = () => { if (ws && ws._wanted) setTimeout(startListening, 1500); };
+  ws._wanted = true;
+  $("listen").classList.add("on"); $("listenSub").textContent = "słuchasz – dotknij, by wyłączyć";
+  $("volrow").classList.add("on");
+}
+function stopListening() {
+  if (ws) { ws._wanted = false; ws.close(); ws = null; }
+  $("listen").classList.remove("on"); $("listenSub").textContent = "dźwięk na żywo";
+  $("volrow").classList.remove("on");
+}
+$("listen").onclick = () => (ws ? stopListening() : startListening());
+$("vol").oninput = (e) => { if (gain) gain.gain.value = +e.target.value; };
+
+// ---------- alarm na stronie ----------
+function beep(kind) {
+  try { ensureCtx(); } catch { return; }
+  const pattern = kind === "cry" ? [880, 660, 880, 660] : [660, 660];
+  pattern.forEach((f, i) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+    const t = ctx.currentTime + i * 0.3;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+    o.start(t); o.stop(t + 0.27);
+  });
+  if (navigator.vibrate) navigator.vibrate(kind === "cry" ? [300, 150, 300, 150, 300] : [200]);
+}
+function showAlert(e) {
+  const hhmm = new Date(e.t * 1000).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  $("alertText").textContent = e.type === "cry" ? `${babyName} płacze · ${hhmm}` : `Ruch w pokoju · ${hhmm}`;
+  $("alert").className = "card on " + e.type;
+}
+$("alertOk").onclick = () => { $("alert").className = "card"; };
+
+// ---------- status ----------
+function pct(x) { return Math.max(0, Math.min(100, x * 100)) + "%"; }
+const motionScale = (f) => Math.max(0, Math.min(1, (Math.log10(Math.max(f, 1e-4)) + 4) / 4));  // 0.0001..1 → 0..1
+
+async function poll() {
+  try {
+    const s = await (await fetch("/api/status", { cache: "no-store" })).json();
+    settings = s.settings; babyName = s.settings.baby_name;
+    $("title").textContent = "Niania · " + babyName;
+    $("dot").className = "dot " + (s.camera.ok && s.audio.ok ? "ok" : "bad");
+    $("video").classList.toggle("down", !s.camera.ok);
+
+    const a = s.audio, c = s.camera;
+    $("cryBar").style.width = pct(a.cry); $("cryThr").style.left = pct(settings.cry_threshold);
+    $("cryVal").textContent = a.ok ? `${Math.round(a.cry * 100)}% · słyszę: ${LABELS[a.top[0]] || a.top[0]}` : "brak mikrofonu";
+    $("motionBar").style.width = pct(motionScale(c.motion)); $("motionThr").style.left = pct(motionScale(c.motion_thr));
+    $("motionVal").textContent = c.ok ? `${(c.motion * 100).toFixed(1)}% obrazu` : "brak kamerki";
+    $("levelBar").style.width = pct((a.level_db + 70) / 60);
+    $("levelVal").textContent = a.ok ? `${Math.round(a.level_db)} dB` : "–";
+
+    $("chipMotion").classList.toggle("on", c.motion_active);
+    $("chipCry").classList.toggle("on", a.cry_active);
+    $("chipDisarmed").classList.toggle("on", !settings.armed);
+    $("arm").classList.toggle("armed", settings.armed);
+    $("armSub").textContent = settings.armed ? "włączone – dotknij, by wyłączyć" : "wyłączone – brak alarmów";
+    $("ntfyServer").textContent = s.ntfy.server; $("ntfyTopic").textContent = s.ntfy.topic;
+    syncSettings();
+
+    const e = s.last_event;
+    if (e && lastEventId !== null && e.id !== lastEventId) { showAlert(e); beep(e.type); loadEvents(); }
+    if (e && lastEventId === null && s.now - e.t < 120) showAlert(e);
+    lastEventId = e ? e.id : 0;
+  } catch {
+    $("dot").className = "dot bad";
+  }
+}
+
+// ---------- zdarzenia ----------
+async function loadEvents() {
+  const list = await (await fetch("/api/events?limit=30", { cache: "no-store" })).json();
+  const ul = $("events");
+  ul.innerHTML = "";
+  if (!list.length) { ul.innerHTML = '<li class="empty">Na razie spokój.</li>'; return; }
+  for (const e of list) {
+    const d = new Date(e.t * 1000);
+    const li = document.createElement("li");
+    const img = e.snapshot ? `<a href="/events/${e.snapshot}" target="_blank"><img loading="lazy" src="/events/${e.snapshot}" alt=""></a>` : "";
+    li.innerHTML = `${img}<div><div class="k ${e.type}">${e.type === "cry" ? "Płacz" : "Ruch"}</div>
+      <div class="t">${d.toLocaleDateString("pl-PL", { weekday: "short", day: "numeric", month: "short" })}, ${d.toLocaleTimeString("pl-PL")}</div></div>`;
+    ul.appendChild(li);
+  }
+}
+
+// ---------- ustawienia ----------
+let editing = false;
+function syncSettings() {
+  if (editing) return;
+  document.querySelectorAll("[data-key]").forEach((el) => {
+    const v = settings[el.dataset.key];
+    if (el.type === "checkbox") el.checked = !!v; else el.value = v;
+    const out = el.parentElement.querySelector("output");
+    if (out) out.textContent = el.value;
+  });
+}
+async function saveSetting(key, value) {
+  const r = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ [key]: value }) });
+  settings = Object.assign(settings, await r.json());
+}
+document.querySelectorAll("[data-key]").forEach((el) => {
+  el.addEventListener("input", () => {
+    editing = true;
+    const out = el.parentElement.querySelector("output"); if (out) out.textContent = el.value;
+  });
+  el.addEventListener("change", async () => {
+    await saveSetting(el.dataset.key, el.type === "checkbox" ? el.checked : +el.value);
+    editing = false;
+  });
+});
+// ---------- wybór kamerki i mikrofonu ----------
+async function loadDevices(refresh = false) {
+  const d = await (await fetch("/api/devices" + (refresh ? "?refresh=1" : ""), { cache: "no-store" })).json();
+  $("camNow").textContent = "teraz: " + (d.camera || "brak");
+  $("micNow").textContent = "teraz: " + (d.mic || "brak");
+  const fill = (sel, items, current, pref) => {
+    sel.innerHTML = "";
+    const names = items.map((x) => x.name);
+    if (pref && !names.some((n) => n.toLowerCase().includes(pref.toLowerCase())))
+      names.unshift(pref);   // wybrane, ale teraz niepodłączone – przełączy się samo, gdy się pojawi
+    for (const n of names) {
+      const o = document.createElement("option");
+      o.value = n; o.textContent = items.some((x) => x.name === n) ? n : n + " (niepodłączone)";
+      sel.appendChild(o);
+    }
+    sel.value = names.includes(current) ? current : names[0] || "";
+  };
+  fill(document.querySelector('[data-dev=camera]'), d.cameras, d.camera, d.camera_pref);
+  fill(document.querySelector('[data-dev=mic]'), d.mics, d.mic, d.mic_pref);
+}
+document.querySelectorAll("select.dev").forEach((sel) => sel.addEventListener("change", async () => {
+  await fetch("/api/device", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ [sel.dataset.dev]: sel.value }) });
+  setTimeout(() => { startStream(); loadDevices(); }, 2500);
+}));
+$("rescan").onclick = async () => { $("rescan").textContent = "Szukam…"; await loadDevices(true); $("rescan").textContent = "Odśwież"; };
+$("settings").addEventListener("toggle", () => { if ($("settings").open) loadDevices(); });
+
+$("arm").onclick = async () => { await saveSetting("armed", !settings.armed); poll(); };
+$("test").onclick = async () => { await fetch("/api/test-notify", { method: "POST" }); $("test").textContent = "Wysłano ✓"; };
+// pierwsze dotknięcie odblokowuje dźwięk alarmu (wymóg iOS)
+document.addEventListener("touchend", () => { try { ensureCtx(); } catch {} }, { once: true });
+document.addEventListener("click", () => { try { ensureCtx(); } catch {} }, { once: true });
+
+setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }); }, 1000);
+poll(); loadEvents();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>
