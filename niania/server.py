@@ -1,9 +1,12 @@
 """Niania – serwer: podgląd, dźwięk na żywo, zdarzenia i powiadomienia ntfy."""
 import asyncio
+import io
 import json
+import os
 import secrets
 import socket
 import ssl
+import sys
 import threading
 import time
 import urllib.request
@@ -13,14 +16,16 @@ from pathlib import Path
 
 import certifi
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 
 from .audio import Audio
 from .camera import Camera, list_cameras, motion_threshold
 
-ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = ROOT / "config.json"
-DATA = ROOT / "data"
+ROOT = Path(__file__).resolve().parent.parent   # zasoby: models/, niania/static
+# Niania.exe trzyma ustawienia i zdarzenia w %LOCALAPPDATA%\Niania, wersja z start.bat – w folderze projektu
+HOME = Path(os.environ["LOCALAPPDATA"]) / "Niania" if getattr(sys, "frozen", False) else ROOT
+CONFIG_PATH = HOME / "config.json"
+DATA = HOME / "data"
 EVENTS_DIR = DATA / "events"
 EVENTS_LOG = DATA / "events.jsonl"
 STATIC = Path(__file__).resolve().parent / "static"
@@ -67,6 +72,7 @@ def load_config():
 
 
 def save_config(cfg):
+    HOME.mkdir(parents=True, exist_ok=True)
     CONFIG_PATH.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
@@ -223,6 +229,26 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 def index():
     return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/qr")
+def qr_page():
+    """Kod QR z adresem niani – do zeskanowania telefonem z ekranu komputera."""
+    import qrcode
+    import qrcode.image.svg
+
+    buf = io.BytesIO()
+    qrcode.make(monitor.url, image_factory=qrcode.image.svg.SvgPathImage, box_size=12).save(buf)
+    svg = buf.getvalue().decode()
+    svg = svg[svg.index("<svg"):]
+    return HTMLResponse(f"""<!doctype html><html lang="pl"><head><meta charset="utf-8"><title>Niania – telefon</title>
+<style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#0d1117;color:#e6edf3;
+font:16px system-ui,sans-serif;text-align:center}}.q{{background:#fff;padding:18px;border-radius:16px;display:inline-block}}
+.q svg{{width:300px;height:300px;display:block}}code{{background:#161b22;padding:3px 8px;border-radius:6px}}
+p{{color:#8b949e;max-width:420px}}</style></head><body><div>
+<h2>Zeskanuj telefonem</h2><div class="q">{svg}</div>
+<p>Adres: <code>{monitor.url}</code><br>Telefon musi być w tej samej sieci Wi-Fi co komputer.</p>
+<p>Powiadomienia: w aplikacji ntfy dodaj temat <code>{monitor.cfg['ntfy_topic']}</code></p></div></body></html>""")
 
 
 @app.get("/api/status")

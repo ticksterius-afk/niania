@@ -12,7 +12,22 @@ Lokalna niania elektroniczna na kamerkę USB (OBSBOT Meet SE). Działa w sieci d
 
 ## Uruchomienie
 
-Kliknij dwukrotnie `start.bat`, a potem otwórz na telefonie adres wypisany w oknie (np. `http://192.168.18.17:8080`).
+**Niania.exe** (`dist\Niania\Niania.exe`, skróty są na pulpicie i w menu Start) działa w tle, bez okna konsoli, z ikoną księżyca obok zegara. Kropka na ikonie pokazuje stan: zielona = czuwa, szara = alarmy wyłączone, czerwona = problem z kamerką lub mikrofonem. Menu pod prawym przyciskiem:
+
+- Otwórz podgląd (to samo robi dwuklik)
+- Kod QR dla telefonu
+- Czuwanie
+- Uruchamiaj razem z Windows
+- Folder z danymi
+- Zakończ
+
+Ponowne uruchomienie exe tylko otwiera podgląd. Ustawienia, zdarzenia i log (`niania.log`) exe trzyma w `%LOCALAPPDATA%\Niania`.
+
+Przebudowa exe po zmianach w kodzie: `build.bat` (około 2 minut, wynik w `dist\Niania`).
+
+Wersja deweloperska: `start.bat` (konsola, ustawienia w folderze projektu). Nie uruchamiaj jej razem z exe, bo obie używają portu 8080.
+
+Na telefonie otwórz adres z menu „Kod QR dla telefonu” (np. `http://192.168.18.17:8080`).
 
 Powiadomienia: zainstaluj aplikację **ntfy**, dodaj subskrypcję z tematem z *Ustawień* na stronie (serwer `https://ntfy.sh`) i kliknij „Wyślij test”.
 

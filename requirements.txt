@@ -6,3 +6,7 @@ sounddevice
 mediapipe
 cv2-enumerate-cameras
 certifi
+pyinstaller
+pystray
+pillow
+qrcode
